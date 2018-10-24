@@ -2,14 +2,13 @@ import tensorflow as tf
 
 
 class Policy_net:
-    def __init__(self, name: str, env):
+    def __init__(self, name: str, observation_space_count, action_space_count):
         """
         :param name: string
-        :param env: gym env
         """
 
-        ob_space = env.observation_space
-        act_space = env.action_space
+        ob_space = observation_space_count
+        act_space = action_space_count
 
         with tf.variable_scope(name):
             self.obs = tf.placeholder(dtype=tf.float32, shape=[None] + list(ob_space.shape), name='obs')

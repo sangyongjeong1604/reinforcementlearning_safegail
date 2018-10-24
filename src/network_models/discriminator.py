@@ -3,32 +3,30 @@ import pdb
 
 
 class Discriminator:
-    def __init__(self, env):
+    def __init__(self, observation_space_count, action_space_count):
         """
-        :param env:
-        Output of this Discriminator is reward for learning agent. Not the cost.
+         Output of this Discriminator is reward for learning agent. Not the cost.
         Because discriminator predicts  P(expert|s,a) = 1 - P(agent|s,a).
         """
 
         with tf.variable_scope('discriminator'):
             self.scope = tf.get_variable_scope().name
-            self.expert_s = tf.placeholder(dtype=tf.float32, shape=[None] + list(env.observation_space.shape))
+            self.expert_s = tf.placeholder(dtype=tf.float32, shape=[None] + list(observation_space_count))
             self.expert_a = tf.placeholder(dtype=tf.int32, shape=[None])
-            expert_a_one_hot = tf.one_hot(self.expert_a, depth=env.action_space.n)
+            expert_a_one_hot = tf.one_hot(self.expert_a, depth=action_space_count)
             # add noise for stabilise training
             expert_a_one_hot += tf.random_normal(tf.shape(expert_a_one_hot), mean=0.2, stddev=0.1, dtype=tf.float32)/1.2
             expert_s_a = tf.concat([self.expert_s, expert_a_one_hot], axis=1)
 
 
-            self.agent_s = tf.placeholder(dtype=tf.float32, shape=[None] + list(env.observation_space.shape))
+            self.agent_s = tf.placeholder(dtype=tf.float32, shape=[None] + list(observation_space_count))
             self.agent_a = tf.placeholder(dtype=tf.int32, shape=[None])
-            agent_a_one_hot = tf.one_hot(self.agent_a, depth=env.action_space.n)
+            agent_a_one_hot = tf.one_hot(self.agent_a, depth=action_space_count)
             # add noise for stabilise training
             agent_a_one_hot += tf.random_normal(tf.shape(agent_a_one_hot), mean=0.2, stddev=0.1, dtype=tf.float32)/1.2
             agent_s_a = tf.concat([self.agent_s, agent_a_one_hot], axis=1)
 
             batch_size=self.expert_s.shape[0]
-
 
             epsilon = tf.random_uniform(shape=[32,1],minval=0.,maxval=1.) 
             X_hat_State = self.expert_s + epsilon * (self.agent_s - self.expert_s)
@@ -36,10 +34,6 @@ class Discriminator:
             
             X_hat_Action = expert_a_one_hot + epsilon * (agent_a_one_hot - expert_a_one_hot)
             X_hat_s_a=tf.concat([X_hat_State,X_hat_Action ], axis=1)
-
-
-            
-
 
             with tf.variable_scope('network') as network_scope:
                 crit_e = self.construct_network(input=expert_s_a)
@@ -56,8 +50,6 @@ class Discriminator:
                 slopes = tf.sqrt(tf.reduce_sum(tf.square(grad_D_X_hat), reduction_indices=[1])) #reduction_indices=range(1, X_hat_s_a.shape.ndims)
                 gradient_penalty = tf.reduce_mean((slopes-1.)**2)
                 loss=obj_d +LAMBDA*gradient_penalty
-
-
 
                 #loss_expert = tf.reduce_mean(tf.log(tf.clip_by_value(prob_1, 0.01, 1)))
                 #loss_agent = tf.reduce_mean(tf.log(tf.clip_by_value(1 - prob_2, 0.01, 1)))
