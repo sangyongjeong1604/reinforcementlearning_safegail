@@ -73,8 +73,8 @@ def telemetry(sid, data):
         image_array = image_array[60:-25, :, :]
 
         steering_angle = float(model.predict(image_array[None, ...], batch_size=1))
-        #print(model.layers[8].output) # model.add(Dense(100))
-        print(feat_extractor.predict(image_array[None, ...], batch_size=1))
+
+        #print(feat_extractor.predict(image_array[None, ...], batch_size=1))  # model.add(Dense(100))
 
         throttle = controller.update(float(speed))
 
@@ -150,7 +150,7 @@ if __name__ == '__main__':
 
     feat_extractor = Model(
         input=model.input,
-        output=model.get_layer('dense_3').output #dense 10의 output
+        output=model.get_layer('dense_1').output #dense 100의 output
     )
 
     if args.image_folder != '':
