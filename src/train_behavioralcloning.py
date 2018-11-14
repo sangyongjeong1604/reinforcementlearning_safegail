@@ -6,10 +6,11 @@ import tensorflow as tf
 from sklearn.model_selection import train_test_split
 import csv
 from network_models.resnet50 import RESNET50
+import algo.cocob_optimizer as cocob
 
 np.random.seed(1024)
 BATCH_SIZE = 64
-ITERATIONS = 1000
+ITERATIONS = 10000
 
 def main(args):
 
@@ -64,7 +65,8 @@ def main(args):
         #throttle_loss = tf.reduce_mean(tf.square(throttle_output - y_throttle))
         steering_loss = tf.reduce_mean(tf.square(steering_output - y_steering))
         #final_loss = throttle_loss + steering_loss
-        traing_op = tf.train.AdamOptimizer().minimize(loss=steering_loss)
+        #traing_op = tf.train.AdamOptimizer(learning_rate=0.0001).minimize(loss=steering_loss)
+        traing_op = cocob.COCOB().minimize(steering_loss)
 
         #throttle_mse = tf.reduce_mean(tf.square(throttle_output - y_throttle_))
         steering_mse = tf.reduce_mean(tf.square(steering_output - y_steering_))
@@ -90,12 +92,12 @@ def main(args):
             for step_ in range(num_steps):
                 #with tf.device('/gpu:0'):
                 with trainable_weights_graph.device('/device:GPU:0'):
-                    if step_ % 10 == 0:
-                        acc = sess.run([steering_mse],
-                                feed_dict={input_data: test_image_arr[:BATCH_SIZE],
-                                              # y_throttle_: test_throttle_arr[:BATCH_SIZE],
-                                              y_steering_: test_steering_arr[:BATCH_SIZE]})
-                        print("accuracy: {}".format(acc))
+                    # if step_ % 10 == 0:
+                    #     acc = sess.run([steering_mse],
+                    #             feed_dict={input_data: test_image_arr[:BATCH_SIZE],
+                    #                           # y_throttle_: test_throttle_arr[:BATCH_SIZE],
+                    #                           y_steering_: test_steering_arr[:BATCH_SIZE]})
+                    #     print("accuracy: {}".format(acc))
 
                     summary, loss, _ = sess.run([merged, steering_loss, traing_op],
                                 feed_dict={input_data: train_image_arr[
@@ -104,11 +106,11 @@ def main(args):
                                            #             step_ * BATCH_SIZE: step_ * BATCH_SIZE + BATCH_SIZE],
                                            y_steering: train_steering_arr[
                                                        step_ * BATCH_SIZE: step_ * BATCH_SIZE + BATCH_SIZE]})
-                    print("[{}] loss: {}".format(step_, loss))
+                    print("[{}-{}] loss: {}".format(iter_, step_, loss))
                     writer.add_summary(summary, iter_cnt)
                     iter_cnt += 1
             # Create a checkpoint in every iteration
-            if iter_ % 5 == 0:
+            if iter_ % 100 == 0:
                 saver.save(sess, os.path.join(args.savedir, 'model_iter'), global_step=iter_)
 
         tf.train.SummaryWriter(sess.graph)
