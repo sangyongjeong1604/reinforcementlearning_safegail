@@ -15,10 +15,18 @@ from io import BytesIO
 from keras.models import load_model
 import h5py
 from keras import __version__ as keras_version
+from keras.models import Model
+#execute command
+from subprocess import Popen
+#mouse control
+import pyautogui
+#for sleep
+from time import sleep
 
 sio = socketio.Server()
 app = Flask(__name__)
 model = None
+feat_extractor = None
 prev_image_array = None
 
 
@@ -63,7 +71,10 @@ def telemetry(sid, data):
         image_array = np.asarray(image)
 
         image_array = image_array[60:-25, :, :]
+
         steering_angle = float(model.predict(image_array[None, ...], batch_size=1))
+        #print(model.layers[8].output) # model.add(Dense(100))
+        #print(feat_extractor.predict(image_array[None, ...], batch_size=1)) # dense 100의 output
 
         throttle = controller.update(float(speed))
 
@@ -95,6 +106,17 @@ def send_control(steering_angle, throttle):
         },
         skip_sid=True)
 
+#Run Simulator
+def run_simulator():
+    global simul
+    #pyautogui.moveTo(820, 830)  # OK Position
+    simul = Popen(["/home/deep/source/safegail/simul1/Default Linux desktop Universal.x86_64"])
+    #subprocess.call('/home/deep/source/safegail/simul1/Default\ Linux\ desktop\ Universal.x86_64', shell=True)
+    sleep(1)
+    pyautogui.click(820, 830) #Click OK
+    sleep(3)
+    pyautogui.click(330, 410) #Click Autonomousmode
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Remote Driving')
@@ -122,6 +144,12 @@ if __name__ == '__main__':
               ', but the model was built using ', model_version)
 
     model = load_model(args.model)
+    #print (model.summary())
+
+    feat_extractor = Model(
+        input=model.input,
+        output=model.get_layer('dense_1').output #dense 100의 output
+    )
 
     if args.image_folder != '':
         print("Creating image folder at {}".format(args.image_folder))
@@ -133,6 +161,9 @@ if __name__ == '__main__':
         print("RECORDING THIS RUN ...")
     else:
         print("NOT RECORDING THIS RUN ...")
+
+    # Run Simulator
+    run_simulator()
 
     # wrap Flask application with engineio's middleware
     app = socketio.Middleware(sio, app)
